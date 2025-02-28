@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot with Document Upload</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Document-Based Chatbot</h1>
+
+    <!-- File Upload Section -->
+    <div class="upload-section">
+        <input type="file" id="fileInput" accept=".pdf">
+        <button onclick="uploadFile()">Upload</button>
+        <p id="uploadStatus"></p>
+    </div>
+
+    <!-- Full-Screen Chat Section -->
+    <div class="chat-container">
+        <div id="chatbox"></div>  <!-- Chat messages appear here -->
+        <div class="input-area">
+            <textarea id="questionInput" placeholder="Type your message..."></textarea>
+            <button onclick="askQuestion()">Send</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

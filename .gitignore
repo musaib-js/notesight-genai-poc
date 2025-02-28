@@ -3,6 +3,7 @@ instance/*
 !instance/.gitignore
 .webassets-cache
 .env
+.envvar
 
 ### Flask.Python Stack ###
 # Byte-compiled / optimized / DLL files
@@ -57,6 +58,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+test
 
 # Translations
 *.mo
