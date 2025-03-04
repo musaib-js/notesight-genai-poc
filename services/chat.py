@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 
 class ChatService:
     def __init__(self):
-        self.llm = ChatOpenAI(model="gpt-4", openai_api_key=OPENAI_API_KEY)
+        self.llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=OPENAI_API_KEY)
         self.vector_service = VectorStoreService()
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 

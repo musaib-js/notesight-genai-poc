@@ -50,7 +50,7 @@ async def generate_notes_stream(cleaned_text: str, previous_summary: str = ""):
             messages.insert(0, {"role": "assistant", "content": previous_summary})
 
         response = await openai_client.chat.completions.create(
-            model="gpt-4o",  
+            model="gpt-4o-mini",  
             messages=messages,
             max_tokens=1000,
             temperature=0.7,
