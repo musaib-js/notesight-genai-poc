@@ -11,10 +11,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(router, prefix="/api")
+app.include_router(router)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
-@app.get("/", status_code=status.HTTP_200_OK)
+@app.get("/home", status_code=status.HTTP_200_OK)
 def home():
     return {"message": "Welcome to Notesight Intelligence Systems!"}
 

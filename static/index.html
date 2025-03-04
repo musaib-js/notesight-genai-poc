@@ -7,24 +7,29 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
     <h1>Document-Based Chatbot</h1>
 
     <!-- File Upload Section -->
     <div class="upload-section">
         <input type="file" id="fileInput" accept=".pdf">
-        <button onclick="uploadFile()">Upload</button>
+        <button id="uploadBtn">Upload</button>
+        <button id="generateSummaryBtn" disabled>Generate Summary</button>
         <p id="uploadStatus"></p>
     </div>
 
-    <!-- Full-Screen Chat Section -->
+    <!-- Chat Section -->
     <div class="chat-container">
-        <div id="chatbox"></div>  <!-- Chat messages appear here -->
+        <div id="chatbox"></div>  
+        <p id="responseOutput"></p> 
         <div class="input-area">
             <textarea id="questionInput" placeholder="Type your message..."></textarea>
-            <button onclick="askQuestion()">Send</button>
+            <button id="sendBtn">Send</button>
         </div>
     </div>
 
+
     <script src="script.js"></script>
+
 </body>
 </html>
