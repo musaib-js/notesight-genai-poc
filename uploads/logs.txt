@@ -28,3 +28,9 @@
 2025-03-03 00:37:51,477 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2025-03-03 00:38:10,224 - INFO - Generated OpenAI response in 19.54 seconds.
 2025-03-03 00:38:10,225 - INFO - Total PDF processing time: 190.04 seconds.
+
+2025-03-03 22:17:07,952 - INFO - Extracted text from pages 0-12 in 1.99 seconds.
+2025-03-03 22:17:07,953 - INFO - Processed chunk 0-12 in 1.99 seconds.
+2025-03-03 22:17:12,062 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-03 22:17:22,222 - INFO - Generated OpenAI response in 13.60 seconds.
+2025-03-03 22:17:22,222 - INFO - Total PDF processing time: 15.61 seconds.

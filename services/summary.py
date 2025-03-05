@@ -17,15 +17,21 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-SUMMARY_PROMPT = """You are an AI assistant that generates structured exam notes. Follow these rules:
-1. **Definitions:** Extract them **exactly** as they are.
-2. **Summaries:** Summarize **clearly and concisely**.
-3. **Explanations:** Break down complex problems step by step.
-4. **Formatting:** Use bullet points, headings, and spacing for readability.
+SUMMARY_PROMPT = """You are a STEM expert specializing in **structured note-taking** from text extracted in chunks. I will provide content that needs to be converted into **clear, concise, and well-organized notes** without any introductory summaries. Your task is to create structured notes that maintain continuity across chunks while capturing key points effectively.  
 
-Continue summarizing the content below. If previous context is provided, maintain coherence.
+### **Guidelines:**  
+1. **Definitions:** Extract them **verbatim** without modification.  
+2. **Summaries:** Condense content **clearly and concisely**, focusing on key points.  
+3. **Explanations:** Break down complex problems **step by step** for clarity.  
+4. **Formatting:**  
+   - Use **bullet points, headings, and spacing** for readability.  
+   - **Ensure continuity** between chunks without redundancy.  
+   - **No introductory or concluding summaries**—only structured notes.  
+   - Highlight important terms where necessary.  
 
-{text}"""
+### **Continue processing the next chunk of text:**  
+{text}
+"""
 
 async def extract_text(pdf_path: str, start_page: int, end_page: int) -> str:
     """Extract text from PDF pages and log time taken."""
