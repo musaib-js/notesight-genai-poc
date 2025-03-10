@@ -1,8 +1,7 @@
 import streamlit as st
 import requests
 
-# FastAPI backend URL
-BASE_URL = "http://localhost:8000"  # Adjust based on your setup
+BASE_URL = "http://localhost:8000"
 st.set_page_config(layout="wide", page_title="POC for Notesight")
 
 st.sidebar.title("Navigation")
@@ -24,7 +23,6 @@ if page == "Home":
             st.error("❌ Failed to upload file")
             st.stop()
 
-    # Chat Interface
     st.subheader("💬 Ask Questions About the Document")
 
     if "messages" not in st.session_state:
@@ -64,15 +62,14 @@ elif page == "Notes":
             if response.status_code == 200:
                 st.subheader("Generated Notes:")
 
-                # Create a placeholder for streaming text
                 notes_placeholder = st.empty()
-                notes_text = ""  # Accumulate for smooth rendering
+                notes_text = ""
                 
                 for chunk in response.iter_content(chunk_size=1024):
                     if chunk:
                         decoded_chunk = chunk.decode("utf-8")
-                        notes_text += decoded_chunk  # Append chunk
-                        notes_placeholder.markdown(notes_text)  # Update UI dynamically
+                        notes_text += decoded_chunk
+                        notes_placeholder.markdown(notes_text)
 
             else:
                 st.error("❌ Failed to generate notes")
@@ -80,17 +77,13 @@ elif page == "Notes":
 elif page == "Flashcards":
     st.title("📚 Flashcard Generator")
 
-    # AI Model Selection
     model_options = {"ChatGPT": "chatgpt", "Gemini": "gemini", "Mistral": "mistral"}
     selected_model = st.selectbox("Select AI Model", list(model_options.keys()))
 
-    # File Upload
     uploaded_files = st.file_uploader("Upload PDFs for Flashcards", type=["pdf"], accept_multiple_files=True)
 
-    # Flashcard Generation
     if st.button("🔹 Generate Flashcards"):
         if uploaded_files:
-            # Prepare files for FastAPI request
             files = [("files", (file.name, file, "application/pdf")) for file in uploaded_files]
             data = {"model": model_options[selected_model]}
 

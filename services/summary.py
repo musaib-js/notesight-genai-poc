@@ -14,7 +14,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Initialize OpenAI and Mistral Clients
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 mistral_client = Mistral(api_key=MISTRAL_API_KEY)
 
@@ -99,16 +98,14 @@ async def generate_gemini_notes_stream(cleaned_text: str, previous_summary: str 
         async with client.aio.live.connect(model=model, config=config) as session:
             message = SUMMARY_PROMPT.format(text=cleaned_text)
 
-            # Send the input message
             await session.send(input=message, end_of_turn=True)
 
             full_summary = ""
 
-            # Stream the response as it arrives
             async for response in session.receive():
                 if response.text is not None:
                     full_summary += response.text
-                    yield response.text  # Streaming response to client
+                    yield response.text
 
     except Exception as e:
         logging.error(f"Gemini Streaming Error: {e}")
@@ -129,7 +126,6 @@ async def stream_pdf_summary(pdf_paths: list[str], model: str):
             with pdfplumber.open(pdf_path) as pdf:
                 total_pages = len(pdf.pages)
 
-            # Process chunks in order
             for start in range(0, total_pages, 20):
                 cleaned_text = await process_chunk(pdf_path, start, min(start + 20, total_pages))
 
@@ -137,17 +133,17 @@ async def stream_pdf_summary(pdf_paths: list[str], model: str):
                     if model == "chatgpt":
                         async for chunk in generate_notes_stream_chatgpt(cleaned_text, previous_summary):
                             yield chunk
-                        previous_summary = chunk  # Maintain continuity
+                        previous_summary = chunk
 
                     elif model == "mistral":
                         async for chunk in generate_notes_stream_mistral(cleaned_text):
                             yield chunk
-                        previous_summary = chunk  # Maintain context
+                        previous_summary = chunk
 
                     elif model == "gemini":
                         async for chunk in generate_gemini_notes_stream(cleaned_text):
                             yield chunk
-                        previous_summary = chunk  # Maintain continuity
+                        previous_summary = chunk
 
         except Exception as e:
             logging.error(f"Streaming error: {e}")

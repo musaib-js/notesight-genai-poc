@@ -19,7 +19,6 @@ FAISS_INDEX_PATH = "faiss_index"
 DOCS_FILE = os.path.join(FAISS_INDEX_PATH, "docs.json")
 INDEX_FILE = os.path.join(FAISS_INDEX_PATH, "vector_store.index")
 
-# Load SpaCy NLP Model
 nlp = spacy.load("en_core_web_sm")
 
 class DocumentChatService:
@@ -53,22 +52,20 @@ class DocumentChatService:
 
     def extract_page_number(self, query: str):
         """Extracts page number using regex first, then NLP with ordinal word mapping."""
-        # Try regex extraction first
         match = re.search(r'(?:on|from)?\s?(?:the)?\s?(\d{1,3})(?:st|nd|rd|th)?\s?(?:page)', query, re.IGNORECASE)
         if match:
             return int(match.group(1))
 
-        # Fall back to NLP extraction
         doc = nlp(query)
         for token in doc:
             if token.text.lower() in ["page", "pages"] and token.i > 0:
                 prev_token = doc[token.i - 1]
                 if prev_token.like_num:
-                    return int(prev_token.text)  # Directly convert numbers
+                    return int(prev_token.text)
                 elif prev_token.text.lower() in self.ORDINAL_MAP:
-                    return self.ORDINAL_MAP[prev_token.text.lower()]  # Convert words to numbers
+                    return self.ORDINAL_MAP[prev_token.text.lower()]
 
-        return None  # No valid page number found
+        return None
 
 
     def load_pdf(self, pdf_path: str):

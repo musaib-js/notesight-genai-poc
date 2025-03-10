@@ -23,7 +23,7 @@ class BaseFlashcardGenerator:
         """Parse AI response into structured JSON flashcards."""
         try:
             json_content = self.extract_json(response_text)
-            flashcards = json.loads(json_content)  # Convert response to JSON
+            flashcards = json.loads(json_content)
             return flashcards if isinstance(flashcards, list) else []
         except json.JSONDecodeError:
             logging.error("Invalid JSON response received")
@@ -126,8 +126,8 @@ class FlashcardGeneratorGemini(BaseFlashcardGenerator):
 
         for full_path in file_paths:
             if not os.path.exists(full_path):
-                print(f"⚠️ File not found: {full_path}")  # Log missing file
-                continue  # Skip missing files
+                print(f"⚠️ File not found: {full_path}")
+                continue
 
             try:
                 with open(full_path, "rb") as file:
@@ -135,7 +135,7 @@ class FlashcardGeneratorGemini(BaseFlashcardGenerator):
                     uploaded_files.append(pdf_part)
                     print(f"✅ Uploaded: {full_path}")
             except Exception as e:
-                print(f"❌ Error uploading {full_path}: {e}")  # Catch unexpected errors
+                print(f"❌ Error uploading {full_path}: {e}")
 
         if not uploaded_files:
             raise FileNotFoundError("❌ No valid files were uploaded. Check file paths.")

@@ -40,7 +40,7 @@ class VectorStoreService:
             return
 
         new_store = FAISS.from_documents(chunks, self.embeddings)
-        self.vectorstore = new_store  # Replace old vectorstore completely
+        self.vectorstore = new_store
 
         self.save_vectorstore(chunks)
 
@@ -51,7 +51,7 @@ class VectorStoreService:
             with open(DOCS_FILE, "w") as f:
                 json.dump([{"page_content": doc.page_content, "metadata": doc.metadata} for doc in docs], f)
             print(f"FAISS index saved with {len(docs)} documents.")
-            self.load_vectorstore()  # Ensure updated data is loaded
+            self.load_vectorstore()
 
     def load_vectorstore(self):
         """Loads FAISS index and documents from disk."""
