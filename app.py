@@ -1,74 +1,104 @@
 import streamlit as st
 import requests
 
-def extract_topics(uploaded_files, selected_model):
-    """Uploads files and extracts key topics."""
-    files = [("files", (file.name, file, "application/pdf")) for file in uploaded_files]
-    data = {"model": selected_model}
-
-    with st.spinner(f"Extracting key topics using {selected_model.capitalize()}... ⏳"):
-        response = requests.post(f"{BASE_URL}/mcqs/", files=files, data=data)
-
-    if response.status_code == 200:
-        response_data = response.json()
-        st.session_state["topics"] = response_data.get("topics", [])
-        st.session_state["file_paths"] = response_data.get("file_paths", [])
-
-        if st.session_state["topics"]:
-            st.success("✅ Topics extracted successfully! Select topics below.")
-        else:
-            st.warning("⚠ No topics found in the document.")
-    else:
-        st.error("❌ Failed to extract topics. Please try again.")
-
-def generate_mcqs(selected_topics, selected_model):
-    """Generates MCQs based on selected topics."""
-    with st.spinner(f"Generating MCQs using {selected_model.capitalize()}... ⏳"):
-        response = requests.post(
-            f"{BASE_URL}/mcqs/generate/",
-            json={"topics": selected_topics, "file_paths": st.session_state["file_paths"], "model": selected_model}
-        )
-
-    if response.status_code == 200:
-        mcqs = response.json()
-        if mcqs:
-            st.subheader("📚 Generated MCQs")
-            for mcq in mcqs:
-                with st.expander(f"📝 {mcq['question']}"):
-                    for option in mcq["options"]:
-                        st.write(f"{option}")
-                    st.success(f"✅ Correct Answer: {mcq['correct_answer']}")
-        else:
-            st.warning("⚠ No MCQs were generated.")
-    else:
-        st.error("❌ Failed to generate MCQs. Please try again.")
-
 BASE_URL = "http://localhost:8000"
 st.set_page_config(layout="wide", page_title="POC for Notesight")
 
 st.sidebar.title("Features")
-page = st.sidebar.radio("Go to", ["Notes", "Flashcards","Chat","MCQ"])
+page = st.sidebar.radio("Go to", ["Notes", "Flashcards", "Chat", "MCQ"])
 
-if page == "Chat":
+# ---- Initialize session state ----
+if "notes_text" not in st.session_state:
+    st.session_state.notes_text = ""
+
+if "flashcards" not in st.session_state:
+    st.session_state.flashcards = []
+
+if "topics_hierarchy" not in st.session_state:
+    st.session_state["topics_hierarchy"] = {}
+if "selected_topics" not in st.session_state:
+    st.session_state["selected_topics"] = []
+
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# ---- Notes Page ----
+if page == "Notes":
+    st.title("Notesight POC - 📄 Generate Notes")
+
+    uploaded_files = st.file_uploader("Upload PDFs for Notes Generation", accept_multiple_files=True)
+    model_options = {"Gemini": "gemini", "ChatGPT": "chatgpt", "Mistral": "mistral"}
+    model = st.selectbox("Select AI Model", list(model_options.values()))
+
+    if uploaded_files and st.button("📝 Generate Notes"):
+        files = [("files", (file.name, file, "application/pdf")) for file in uploaded_files]
+        response = requests.post(f"{BASE_URL}/notes/", files=files, data={"model": model}, stream=True)
+
+        if response.status_code == 200:
+            st.session_state.notes_text = ""  # Clear old notes
+            notes_placeholder = st.empty()
+
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    st.session_state.notes_text += chunk.decode("utf-8")
+                    notes_placeholder.markdown(st.session_state.notes_text)
+
+        else:
+            st.error("❌ Failed to generate notes")
+
+    if st.session_state.notes_text:
+        st.subheader("Generated Notes:")
+        st.markdown(st.session_state.notes_text)
+
+# ---- Flashcards Page ----
+elif page == "Flashcards":
+    st.title("Notesight POC - 📚 Flashcard Generator")
+    uploaded_files = st.file_uploader("Upload PDFs for Flashcards", type=["pdf", "txt", "png", "jpg", "jpeg"], accept_multiple_files=True)
+    model_options = {"Gemini": "gemini", "ChatGPT": "chatgpt", "Mistral": "mistral"}
+    selected_model = st.selectbox("Select AI Model", list(model_options.keys()))
+
+    if uploaded_files and st.button("🔹 Generate Flashcards"):
+        files = [("files", (file.name, file, "application/pdf")) for file in uploaded_files]
+        data = {"model": model_options[selected_model]}
+
+        with st.spinner(f"Generating flashcards using {selected_model}... ⏳"):
+            response = requests.post(f"{BASE_URL}/flashcards/", files=files, data=data)
+
+            if response.status_code == 200:
+                st.session_state.flashcards = response.json().get("flashcards", [])
+
+                if st.session_state.flashcards:
+                    st.success(f"✅ Flashcards Generated Using {selected_model}")
+                else:
+                    st.warning("⚠ No flashcards were generated.")
+            else:
+                st.error(f"❌ Failed to generate flashcards using {selected_model}")
+
+    if st.session_state.flashcards:
+        st.subheader(f"📝 Flashcards (Generated by {selected_model})")
+        for flashcard in st.session_state.flashcards:
+            with st.expander(f"**{flashcard.get('concept', 'Unknown Concept')}**"):
+                st.write(flashcard.get("definition", "No Definition Provided"))
+
+# ---- Chat Page ----
+elif page == "Chat":
     st.title("Notesight POC - Document QA")
 
     uploaded_file = st.file_uploader("Upload a PDF document", type=["pdf"])
 
-    if uploaded_file:
+    if uploaded_file and st.button("📤 Upload File"):
         files = {"file": (uploaded_file.name, uploaded_file, "application/pdf")}
         response = requests.post(f"{BASE_URL}/upload/", files=files)
 
         if response.status_code == 200:
             st.success("✅ File uploaded successfully!")
-            file_path = response.json().get("file_path")
+            st.session_state.file_path = response.json().get("file_path")
         else:
             st.error("❌ Failed to upload file")
             st.stop()
 
     st.subheader("💬 Ask Questions About the Document")
-
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -89,86 +119,58 @@ if page == "Chat":
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
 
-elif page == "Notes":
-    st.title("Notesight POC - 📄Generate Notes")
+elif page == "MCQ":
+    st.title("📘 Notesight POC - Generate MCQs")
 
-    uploaded_files = st.file_uploader("Upload PDFs for Notes Generation", accept_multiple_files=True)
-    model_options = {"Gemini": "gemini","ChatGPT": "chatgpt", "Mistral": "mistral"}
-    model = st.selectbox("Select AI Model", list(model_options.values()))
-    if uploaded_files:
+    uploaded_files = st.file_uploader("📂 Upload PDFs for MCQ generation", type=["pdf"], accept_multiple_files=True)
+    MODEL_OPTIONS = {"Gemini": "gemini", "ChatGPT": "chatgpt", "Mistral": "mistral"}
+    selected_model = st.selectbox("🤖 Select AI Model", list(MODEL_OPTIONS.keys()))
+    selected_model_key = MODEL_OPTIONS[selected_model]
+
+    if uploaded_files and st.button("🔍 Extract Topics"):
         files = [("files", (file.name, file, "application/pdf")) for file in uploaded_files]
-
-        if st.button("📝 Generate Notes"):
-            response = requests.post(f"{BASE_URL}/notes/", files=files, data={"model": model}, stream=True)
+        with st.spinner(f"Extracting topics {selected_model.capitalize()}... ⏳"):
+            response = requests.post(f"{BASE_URL}/mcqs/", files=files, data={"model": selected_model_key})
 
             if response.status_code == 200:
-                st.subheader("Generated Notes:")
-
-                notes_placeholder = st.empty()
-                notes_text = ""
-                
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:
-                        decoded_chunk = chunk.decode("utf-8")
-                        notes_text += decoded_chunk
-                        notes_placeholder.markdown(notes_text)
-
+                st.session_state["topics_hierarchy"] = response.json().get("topics", {})
+                st.success("✅ Topics Extracted! Select subtopics below.")
+                st.session_state["file_paths"] = response.json().get("file_paths", [])
             else:
-                st.error("❌ Failed to generate notes")
+                st.error("❌ Failed to extract topics.")
 
-elif page == "Flashcards":
-    st.title("Notesight POC - 📚Flashcard Generator")
+    if "topics_hierarchy" in st.session_state and st.session_state["topics_hierarchy"]:
+        st.subheader("📑 Select Subtopics for MCQ Generation")
+        selected_subtopics = []
 
-    uploaded_files = st.file_uploader("Upload PDFs for Flashcards", type=["pdf"], accept_multiple_files=True)
-    model_options = {"Gemini": "gemini","ChatGPT": "chatgpt", "Mistral": "mistral"}
-    selected_model = st.selectbox("Select AI Model", list(model_options.keys()))
-    if st.button("🔹 Generate Flashcards"):
-        if uploaded_files:
-            files = [("files", (file.name, file, "application/pdf")) for file in uploaded_files]
-            data = {"model": model_options[selected_model]}
+        for chapter, subtopics in st.session_state["topics_hierarchy"].items():
+            with st.expander(f"📖 {chapter}"):
+                chapter_selected = st.checkbox(f"Select All in {chapter}", key=f"{chapter}_all")
+                for subtopic in subtopics:
+                    subtopic_selected = st.checkbox(subtopic, key=f"{chapter}_{subtopic}", value=chapter_selected)
+                    if subtopic_selected:
+                        selected_subtopics.append(subtopic)
 
-            with st.spinner(f"Generating flashcards using {selected_model}... ⏳"):
-                response = requests.post(f"{BASE_URL}/flashcards/", files=files, data=data)
+        st.session_state["selected_subtopics"] = selected_subtopics
 
-                if response.status_code == 200:
-                    flashcards = response.json().get("flashcards", [])
+    if "selected_subtopics" in st.session_state and st.session_state["selected_subtopics"] and st.button("🎯 Generate MCQs"):
+        # Save uploaded files and get file paths
+        with st.spinner(f"Generating MCQs using {selected_model.capitalize()}... ⏳"):
+            response = requests.post(
+                f"{BASE_URL}/mcqs/generate/",
+                json={"topics": st.session_state["selected_subtopics"], "file_paths": st.session_state["file_paths"], "model": selected_model}
+            )
 
-                    if flashcards:
-                        st.subheader(f"📝 Flashcards (Generated by {selected_model})")
-                        for flashcard in flashcards:
-                            with st.expander(f"**{flashcard.get('concept', 'Unknown Concept')}**"):
-                                st.write(flashcard.get("definition", "No Definition Provided"))
-                    else:
-                        st.warning("⚠ No flashcards were generated.")
-                else:
-                    st.error(f"❌ Failed to generate flashcards using {selected_model}")
-        else:
-            st.warning("⚠ Please upload at least one file first.")
-
-
-elif page == "MCQ":
-    st.title("Notesight POC - Generate MCQs")
-
-    uploaded_files = st.file_uploader("Upload PDFs for MCQ generation", type=["pdf"], accept_multiple_files=True)
-    MODEL_OPTIONS = {"Gemini": "gemini", "ChatGPT": "chatgpt", "Mistral": "mistral"}
-    selected_model = st.selectbox("Select AI Model", list(MODEL_OPTIONS.keys()))
-    selected_model_key = MODEL_OPTIONS[selected_model]  # Get model key
-
-    if st.button("🔹 Extract Key Topics"):
-        if uploaded_files:
-            extract_topics(uploaded_files, selected_model_key)
-        else:
-            st.warning("⚠ Please upload at least one file first.")
-
-    if "topics" in st.session_state and st.session_state["topics"]:
-        selected_topics = st.multiselect("Select Topics for MCQ Generation", st.session_state["topics"])
-        
-        if st.button("🎯 Generate MCQs"):
-            if selected_topics:
-                generate_mcqs(selected_topics, selected_model_key)
+        if response.status_code == 200:
+            mcqs = response.json()
+            if mcqs:
+                st.subheader("📚 Generated MCQs")
+                for mcq in mcqs:
+                    with st.expander(f"📝 {mcq['question']}"):
+                        for option in mcq["options"]:
+                            st.write(f"{option}")
+                        st.success(f"✅ Correct Answer: {mcq['correct_answer']}")
             else:
-                st.warning("⚠ Please select at least one topic.")
-
-
-
-
+                st.warning("⚠ No MCQs were generated.")
+        else:
+            st.error("❌ Failed to generate MCQs. Please try again.")

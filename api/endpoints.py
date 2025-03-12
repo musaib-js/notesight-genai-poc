@@ -113,36 +113,34 @@ def get_mcq_generator(model: str):
         raise HTTPException(status_code=400, detail="Invalid model specified")
     return model_map[model]()
 
+
 @router.post("/mcqs/")
 async def extract_topics(files: List[UploadFile] = File(...), model: str = Form(...)):
-    """Extracts key topics from uploaded PDFs using the selected AI model."""
+    """Extracts structured topics from uploaded PDFs using the selected AI model."""
     mcq_generator = get_mcq_generator(model)
-    full_paths = []
+    structured_topics = {}
 
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    full_paths = []
     for file in files:
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as buffer:
             buffer.write(await file.read())
         full_paths.append(file_path)
+        
+        extracted_topics = mcq_generator.upload_and_parse_file(file_path)
+        structured_topics.update(extracted_topics)
+    if not structured_topics:
+        raise HTTPException(status_code=500, detail="❌ Failed to extract topics from files.")
 
-    topics = []
-    for path in full_paths:
-        extracted_topics = mcq_generator.upload_and_parse_file(path)
-        if extracted_topics:
-            topics.extend(extracted_topics)
-
-    if not topics:
-        raise HTTPException(status_code=500, detail="Failed to extract topics from files")
-
-    return {"topics": topics, "file_paths": full_paths}
+    return {"topics": structured_topics,"file_paths": full_paths}
 
 @router.post("/mcqs/generate/", response_model=List[MCQResponse])
 async def generate_selected_mcqs(topic_selection: TopicSelection):
     """Generates MCQs for selected topics using the uploaded file and model."""
     if not topic_selection.topics:
         raise HTTPException(status_code=400, detail="No topics selected")
-
-    mcq_generator = get_mcq_generator(topic_selection.model)
+    mcq_generator = get_mcq_generator(topic_selection.model.lower())
     mcqs = mcq_generator.generate_mcqs(topic_selection.topics, topic_selection.file_paths)
 
     if not mcqs:

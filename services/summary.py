@@ -120,7 +120,7 @@ def encode_image(image_path):
     except FileNotFoundError:
         print(f"Error: The file {image_path} was not found.")
         return None
-    except Exception as e:  # Added general exception handling
+    except Exception as e:  
         print(f"Error: {e}")
         return None
 
@@ -168,8 +168,8 @@ async def stream_summary(file_paths: list[str], model: str):
                 with pdfplumber.open(file_path) as pdf:
                     total_pages = len(pdf.pages)
 
-                for start in range(0, total_pages, 20):
-                    cleaned_text = await process_chunk(file_path, start, min(start + 20, total_pages))
+                for start in range(0, total_pages, 5):
+                    cleaned_text = await process_chunk(file_path, start, min(start + 5, total_pages))
 
                     if cleaned_text:
                         if model == "chatgpt":

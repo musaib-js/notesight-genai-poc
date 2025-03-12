@@ -6,13 +6,14 @@ from core.prompts import MCQ_PROMPT,MCQ_EXTRACT_TOPIC
 import json
 from openai import OpenAI
 from mistralai import Mistral
+import re
 
 class MCQGeneratorGemini:
     def __init__(self):
         self.client = genai.Client(api_key=GEMINI_API_KEY)
 
     def upload_and_parse_file(self, file_path):
-        """Uploads a file and extracts key topics."""
+        """Uploads a file and extracts structured key topics."""
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"❌ File not found: {file_path}")
 
@@ -24,11 +25,24 @@ class MCQGeneratorGemini:
                 model="gemini-2.0-flash",
                 contents=[pdf_part, MCQ_EXTRACT_TOPIC]
             )
-            return [topic.strip() for topic in response.text.split("\n") if topic.strip()]
-        
+            raw_topics = [topic.strip() for topic in response.text.split("\n") if topic.strip()]
+            structured_topics = {}
+            current_chapter = None
+
+            for item in raw_topics:
+                if re.match(r"^\d+\.\s*Chapter", item):
+                    chapter_title = item.split(":", 1)[1].strip()
+                    current_chapter = chapter_title
+                    structured_topics[current_chapter] = []
+                elif current_chapter:
+                    subtopic = item.lstrip("- ").strip()
+                    structured_topics[current_chapter].append(subtopic)
+
+            return structured_topics
+
         except Exception as e:
             print(f"❌ Error processing file: {e}")
-            return []
+            return {}
 
     def generate_mcqs(self, selected_topics, file_paths):
         """Generates MCQs for the selected topics using uploaded files."""
@@ -53,7 +67,6 @@ class MCQGeneratorGemini:
                 contents=[pdf_parts,prompt]
             )
             return response.text
-        
         except Exception as e:
             print(f"❌ Error generating MCQs: {e}")
             return ""
@@ -61,9 +74,9 @@ class MCQGeneratorGemini:
 class MCQGeneratorChatGPT:
     def __init__(self):
         self.openai_client = OpenAI(api_key=OPENAI_API_KEY)
-        self.thread_id = None  # Store a single thread ID
-        self.assistant_id = None  # Store a single assistant ID
-        self.uploaded_files = {}  # Store uploaded file IDs to avoid duplicate uploads
+        self.thread_id = None
+        self.assistant_id = None
+        self.uploaded_files = {}
 
     def initialize_assistant_and_thread(self):
         """Initialize assistant and thread if not already created."""
@@ -91,7 +104,7 @@ class MCQGeneratorChatGPT:
             with open(file_path, "rb") as file:
                 uploaded_file = self.openai_client.files.create(file=file, purpose="assistants")
                 file_id = uploaded_file.id
-                self.uploaded_files[file_path] = file_id  # Cache the file ID
+                self.uploaded_files[file_path] = file_id
                 return file_id
         except Exception as e:
             print(f"❌ Error uploading file: {e}")
@@ -105,28 +118,35 @@ class MCQGeneratorChatGPT:
             return []
 
         try:
-            # Send a message to extract key topics
             self.openai_client.beta.threads.messages.create(
                 thread_id=self.thread_id,
                 role="user",
-                content="Extract key topics from the document.",
+                content=MCQ_EXTRACT_TOPIC,
                 attachments=[{"file_id": file_id, "tools": [{"type": "file_search"}]}],
             )
 
-            # Run assistant
             run = self.openai_client.beta.threads.runs.create(thread_id=self.thread_id, assistant_id=self.assistant_id)
 
-            # Poll for completion
             while True:
                 status = self.openai_client.beta.threads.runs.retrieve(thread_id=self.thread_id, run_id=run.id)
                 if status.status in ["completed", "failed"]:
                     break
 
-            # Retrieve response
             messages = self.openai_client.beta.threads.messages.list(thread_id=self.thread_id)
             response_text = next((msg.content[0].text.value for msg in messages.data if msg.role == "assistant"), "")
+            raw_topics = [topic.strip() for topic in response_text.split("\n") if topic.strip()]
+            structured_topics = {}
+            current_chapter = None
+            for item in raw_topics:
+                if re.match(r"^\d+\.\s*Chapter", item):
+                    chapter_title = item.split(":", 1)[1].strip()
+                    current_chapter = chapter_title
+                    structured_topics[current_chapter] = []
+                elif current_chapter:
+                    subtopic = item.lstrip("- ").strip()
+                    structured_topics[current_chapter].append(subtopic)
 
-            return [topic.strip() for topic in response_text.split("\n") if topic.strip()]
+            return structured_topics
 
         except Exception as e:
             print(f"❌ Error extracting topics: {e}")
@@ -159,13 +179,11 @@ class MCQGeneratorChatGPT:
 
             run = self.openai_client.beta.threads.runs.create(thread_id=self.thread_id, assistant_id=self.assistant_id)
 
-            # Poll for completion
             while True:
                 status = self.openai_client.beta.threads.runs.retrieve(thread_id=self.thread_id, run_id=run.id)
                 if status.status in ["completed", "failed"]:
                     break
 
-            # Retrieve MCQs
             messages = self.openai_client.beta.threads.messages.list(thread_id=self.thread_id)
             mcqs_json = next((msg.content[0].text.value for msg in messages.data if msg.role == "assistant"), "")
             print(mcqs_json.strip())
@@ -202,7 +220,20 @@ class MCQGeneratorMistral:
 
             chat_response = self.mistral_client.chat.complete(model="mistral-small-latest", messages=messages)
             response = chat_response.choices[0].message.content
-            return [topic.strip() for topic in response.split("\n") if topic.strip()]
+            structured_topics = {}
+            current_chapter = None
+            response_text=[topic.strip() for topic in response.split("\n") if topic.strip()]
+            print(response_text)
+            for item in response_text:
+                if re.match(r"^\d+\.\s*Chapter", item):
+                    chapter_title = item.split(":", 1)[1].strip()
+                    current_chapter = chapter_title
+                    structured_topics[current_chapter] = []
+                elif current_chapter:
+                    subtopic = item.lstrip("- ").strip()
+                    structured_topics[current_chapter].append(subtopic)
+
+            return structured_topics
         
         except Exception as e:
             print(f"❌ Error processing file: {e}")
