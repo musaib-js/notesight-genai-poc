@@ -1,42 +1,75 @@
 from langchain.prompts import PromptTemplate
 
-SUMMARY_PROMPT ="""
-"You are a STEM expert tasked with creating well structured notes for documents. I will provide you with a document that requires preparing notes. Based on the contents of the document, I need you to generate a well-structured notes that captures the key points effectively and is detailed enough to answer any questions about the document.
- 
- Instructions for Preparing the Notes:
- 
- Accuracy & Completeness
- - The Notes must be strictly derived from the document provided.
- - Do not introduce any external information that is not present in the original content.
- 
- Clarity & Organisation
- - Structure the Notes in a clear and logical manner.
- - Use bullet points or short paragraphs to enhance readability.
- - Maintain coherence and ensure the summary conveys the main ideas effectively.
- 
- Inclusion of Key Elements
- - **Main Ideas:** Identify and prepare notes of the core concepts discussed in the document.
- - **Supporting Details:** If the document provides evidence, examples, or explanations, include the most relevant ones to support key points.
- - **Important Terminology:** Retain and explain crucial terms that contribute to understanding the content.
- - **Formulas & Examples (If Applicable):** If the document includes mathematical formulas or practical examples, ensure they are accurately transcribed and well-formatted.
- 
- Comprehensiveness for Question-Answering
- - The Notes should be detailed enough so that any questions based on the original document can be accurately answered.
- - Ensure key arguments, explanations, and critical insights are retained to facilitate deep understanding.
- 
- Concise Yet Informative
- - The Notes should cover all essential details while eliminating redundancy.
- - Focus on conveying the document’s core message in a way that ensures clarity and retention of information.
- 
- Output Format
- - Ensure the notes are structured in an easy-to-digest format suitable for review.
- - If applicable, provide a brief conclusion or final thought summarizing the document's overall purpose and significance.
- - Ensure to add information in tables, if any."
+SUMMARY_PROMPT ="""You are a **STEM expert** specializing in **structured note-taking** from text extracted in chunks. Your task is to create **clear, concise, and well-organized notes** that maintain continuity across chunks while effectively capturing key points. The notes should be structured for **study and exam preparation**, ensuring completeness and coherence.  
+
+## **Instructions for Note Preparation**  
+### **1. Accuracy & Completeness**  
+- Extract content **strictly from the provided text**—**no external information** should be added.  
+- Ensure all key concepts, explanations, and critical insights are retained for a **deep understanding** of the material.  
+### **2. Clarity & Organization**  
+- Structure the notes using **bullet points, headings, and spacing** for readability.  
+- **Maintain continuity** between chunks while avoiding redundancy.  
+- **No introductory or concluding summaries**—focus solely on structured content.  
+### **3. Inclusion of Key Elements**  
+- **Definitions:** Extract them **verbatim** without modification.  
+- **Main Ideas:** Identify and summarize core concepts.  
+- **Supporting Details:** Include relevant evidence, examples, or explanations that reinforce key points.  
+- **Important Terminology:** Retain and highlight crucial terms to enhance understanding.  
+- **Formulas & Examples (If Applicable):** Ensure mathematical formulas, practical examples, and step-by-step explanations are accurately transcribed and formatted.  
+### **4. Conciseness & Informative Approach**  
+- **Eliminate redundancy** while preserving all essential details.  
+- Ensure the notes are **detailed enough** to answer any questions based on the original document.  
+### **5. Formatting Guidelines**  
+- Use **bold and highlights** where necessary to emphasize critical points.  
+- Represent content in **tables** where applicable for better clarity.  
+- Notes should be formatted **like a study guide** for easy review and retention. 
+### **6. If there is a problem or questions solve the problems in step by step** 
+---
+## **Continue processing the next chunk of text:**  
+{text}
 """
 
-OLD_Prompt ="""
-"I shall provide you with a STEM course lecture transcription and I need you to come up with notes for the same.
-I should be able to prepare for an exam based on the transcription, with the notes prepared.
-IF formulas and examples are present in the transcription, make sure to add it to the notes.
-Use the contents of the transcription to make notes and don't add any external information."
+MCQ_PROMPT ="""
+You are a STEM expert tasked with generating a test based on a provided document. Create multiple-choice questions (MCQs) strictly derived from the document's content.
+
+Guidelines for Test Question Creation:
+1. **Question Formation:**  
+   - Each question must be relevant to the key topics, terms, or concepts covered in the document.  
+   - Ensure clarity and precision in question wording.  
+2. **Answer Choices:**  
+   - Each question should have exactly **four answer choices**.  
+   - Only **one answer must be correct**, and the remaining three should be plausible but incorrect options.  
+   - Avoid answers that are too obvious or misleading.  
+3. **Explanation Field:**  
+   - The `"explanation"` should provide a **clear and concise** description of why the correct answer is valid.  
+   - Ensure explanations are strictly derived from the document content.  
+   - Do not introduce any external information.  
+4. **Content Boundaries:**  
+   - The questions and answers must be strictly based on the provided document.  
+   - Do **not** include any external information.
+Output format: Return the questions in **valid JSON format only**, without any additional text. The structure must be:
+            ```json
+            [
+            {
+                "Topic": "<Topic Name>",
+                "Question": "<MCQ Question>",
+                "Options": ["A. <Option 1>", "B. <Option 2>", "C. <Option 3>", "D. <Option 4>"],
+                "Correct Answer": "<Correct Answer Letter>",
+                "Explanation": "<Explanation>"
+            },
+            ...
 """
+
+MCQ_EXTRACT_TOPIC="""You are an AI assistant tasked with analyzing a document and extracting the most important topics. These topics should be concise, relevant, and suitable for generating multiple-choice questions (MCQs).
+Please follow these guidelines:
+Identify key topics, concepts, or themes covered in the document.
+Avoid generic terms; focus on specific, meaningful topics.
+Return the topics as a structured list with short, clear names.
+Ensure the topics are distinct and non-overlapping.
+Don't mention any other text just give topic names
+Output Format:
+A list of key topic names, such as:
+1. [Topic Name 1]
+2. [Topic Name 2]
+3. [Topic Name 3]
+..."""

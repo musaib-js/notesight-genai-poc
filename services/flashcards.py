@@ -66,7 +66,7 @@ class FlashcardGeneratorChatGPT(BaseFlashcardGenerator):
         run = self.client.beta.threads.runs.create(thread_id=thread.id, assistant_id=assistant.id)
 
         while True:
-            time.sleep(5)
+            time.sleep(1)
             status = self.client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
             if status.status in ["completed", "failed"]:
                 break
