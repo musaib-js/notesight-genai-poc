@@ -168,8 +168,8 @@ async def stream_summary(file_paths: list[str], model: str):
                 with pdfplumber.open(file_path) as pdf:
                     total_pages = len(pdf.pages)
 
-                for start in range(0, total_pages, 5):
-                    cleaned_text = await process_chunk(file_path, start, min(start + 5, total_pages))
+                for start in range(0, total_pages, 10):
+                    cleaned_text = await process_chunk(file_path, start, min(start + 10, total_pages))
 
                     if cleaned_text:
                         if model == "chatgpt":

@@ -7,44 +7,63 @@ from fastapi.responses import JSONResponse
 from services.summary import stream_summary
 logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
-from services.chat import DocumentChatService
+from services.chat import DocumentChatServiceGemini,DocumentChatServiceOpenAI
 from services.flashcards import FlashcardGeneratorChatGPT,FlashcardGeneratorMistral,FlashcardGeneratorGemini
 from services.mcqs import MCQGeneratorGemini,MCQGeneratorMistral, MCQGeneratorChatGPT
 from pydantic import BaseModel
 import time
 from typing import List, Dict
 router = APIRouter()
-chat_service = DocumentChatService()
+chat_service = DocumentChatServiceGemini()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 from core.config import OPENAI_API_KEY
 from openai import OpenAI
 client = OpenAI(api_key=OPENAI_API_KEY)
 import json
+from services.report import process_pdf,extract_json
+from datastorage.db_connect import save_student_report
+import re
+
+CHAT_SERVICES = {
+    "gemini": DocumentChatServiceGemini(collection_name="document-chat-collection-gemini"),
+    "chatgpt": DocumentChatServiceOpenAI(collection_name="document-chat-collection-openai")
+}
 
 @router.post("/upload/")
-async def upload_document(file: UploadFile = File(...)):
-    """Uploads a document and stores it for later summarization."""
+async def upload_document(file: UploadFile = File(...), model: str = Form("gemini")):
+    """Uploads a document and stores it for later summarization with the selected model."""
     file_path = os.path.join(UPLOAD_DIR, file.filename)
+
+    if model not in CHAT_SERVICES:
+        raise HTTPException(status_code=400, detail=f"Invalid model. Choose from {list(CHAT_SERVICES.keys())}")
 
     try:
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        chat_service.load_pdf(file_path)
-        logging.info(f"File '{file.filename}' saved successfully.")
-        return JSONResponse(status_code=200, content={"message": "File uploaded successfully", "file_path": file_path})
-
+        chat_service = CHAT_SERVICES[model]
+        chat_service.load_file(file_path)
+        logging.info(f"File '{file.filename}' saved successfully for model '{model}'.")
+        return JSONResponse(
+            status_code=200,
+            content={"message": "File uploaded successfully", "file_path": file_path, "model": model}
+        )
     except Exception as e:
-        logging.error(f"Error uploading file: {str(e)}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        logging.error(f"Error uploading file for model '{model}': {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/ask/")
-async def ask_question(query: str = Form(...)):
+async def ask_question(query: str = Form(...), model: str = Form("gemini")):
+    """Asks a question about the uploaded document using the selected model."""
     if not query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
-    return chat_service.ask_question(query)
+    
+    if model not in CHAT_SERVICES:
+        raise HTTPException(status_code=400, detail=f"Invalid model. Choose from {list(CHAT_SERVICES.keys())}")
 
+    chat_service = CHAT_SERVICES[model]
+    return chat_service.ask_question(query)
 
 @router.post("/flashcards/")
 async def generate_flashcards(files: List[UploadFile] = File(...),model: str = Form(...)):
@@ -168,3 +187,23 @@ async def generate_selected_mcqs(topic_selection: TopicSelection):
     ]
 
     return formatted_mcqs
+
+def extract_json(response_text):
+    """Extract JSON content from Gemini API response."""
+    try:
+        json_match = re.search(r"```json\n(.*?)\n```", response_text, re.DOTALL)
+        json_data = json_match.group(1).strip() if json_match else response_text.strip()
+        return json.loads(json_data)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON response from AI model")
+
+@router.post("/report/")
+async def upload_and_generate_report(file: UploadFile = File(...)):
+    """Uploads a PDF, generates a report, and saves it to MongoDB."""
+    try:
+        pdf_data = await file.read()
+        student_report = process_pdf(pdf_data)
+        saved_report = save_student_report(student_report)
+        return {"message": "Report generated and saved successfully", "data": saved_report}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

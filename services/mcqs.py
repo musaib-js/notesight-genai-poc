@@ -18,9 +18,12 @@ class MCQGeneratorGemini:
             raise FileNotFoundError(f"❌ File not found: {file_path}")
 
         try:
-            with open(file_path, "rb") as file:
-                pdf_part = types.Part.from_bytes(data=file.read(), mime_type="application/pdf")
-
+            ext = os.path.splitext(file_path)[-1].lower()
+            if ext == ".pdf":
+                with open(file_path, "rb") as file:
+                    pdf_part = types.Part.from_bytes(data=file.read(), mime_type="application/pdf")
+            else:
+                pdf_part = self.client.files.upload(file=file_path)
             response = self.client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents=[pdf_part, MCQ_EXTRACT_TOPIC]
@@ -134,6 +137,7 @@ class MCQGeneratorChatGPT:
 
             messages = self.openai_client.beta.threads.messages.list(thread_id=self.thread_id)
             response_text = next((msg.content[0].text.value for msg in messages.data if msg.role == "assistant"), "")
+            print(response_text)
             raw_topics = [topic.strip() for topic in response_text.split("\n") if topic.strip()]
             structured_topics = {}
             current_chapter = None

@@ -8,7 +8,7 @@ from mistralai import Mistral
 from core.config import OPENAI_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY
 from google import genai
 from google.genai import types
-from core.flashcardprompt import prompt
+from core.prompts import FLASHCARD_PROMPT as prompt
 import base64
 
 
