@@ -98,17 +98,17 @@ class DocumentChatServiceGemini:
 
     def load_file(self,file_path: str):
         """Loads and processes a file of any supported type, replacing existing data in Chroma."""
-        # Extract text using the existing function
+        
         text = self.extract_text_from_file(file_path)
         
         if not text:
             print("No text extracted from the file.")
             return
 
-        # Create a single Document object from the extracted text
+        
         doc = Document(page_content=text, metadata={"source": file_path})
         
-        # Split the text into chunks
+        
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = splitter.split_documents([doc])
         
@@ -260,17 +260,17 @@ class DocumentChatServiceOpenAI:
 
     def load_file(self,file_path: str):
         """Loads and processes a file of any supported type, replacing existing data in Chroma."""
-        # Extract text using the existing function
+        
         text = self.extract_text_from_file(file_path)
         
         if not text:
             print("No text extracted from the file.")
             return
 
-        # Create a single Document object from the extracted text
+        
         doc = Document(page_content=text, metadata={"source": file_path})
         
-        # Split the text into chunks
+        
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = splitter.split_documents([doc])
         

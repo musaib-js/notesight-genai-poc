@@ -128,7 +128,62 @@ class FlashcardGeneratorChatGPT(BaseFlashcardGenerator):
         print(f"Generated {len(flashcards)} flashcards in {time.time() - start_time:.2f} seconds.")
         return flashcards
 
+    def generate_flashcards_with_report(self, file_paths,prompt):
+        """Generates flashcards using ChatGPT (GPT-4o-mini)."""
+        start_time = time.time()
 
+        has_pdf = any(file.endswith(".pdf") for file in file_paths)
+        has_txt_or_image = any(file.endswith((".txt", ".jpg", ".jpeg", ".png")) for file in file_paths)
+
+        extracted_texts = self.process_txt_and_images(file_paths)
+
+        if has_pdf:
+            file_ids = self.upload_files(file_paths)
+
+            assistant = self.client.beta.assistants.create(
+                name="Flashcard Generator",
+                instructions=prompt,
+                model="gpt-4o-mini",
+                tools=[{"type": "file_search"}],
+            )
+
+            thread = self.client.beta.threads.create()
+            self.client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=prompt,
+                attachments=[{"file_id": fid, "tools": [{"type": "file_search"}]} for fid in file_ids] +
+                            [{"type": "text", "text": text} for text in extracted_texts]
+            )
+
+            run = self.client.beta.threads.runs.create(thread_id=thread.id, assistant_id=assistant.id)
+
+            while True:
+                time.sleep(1)
+                status = self.client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+                if status.status in ["completed", "failed"]:
+                    break
+
+            messages = self.client.beta.threads.messages.list(thread_id=thread.id)
+            response_text = next((msg.content[0].text.value for msg in messages.data if msg.role == "assistant"), "")
+
+        else:
+            messages = [{"role": "system", "content": prompt}]
+            for text in extracted_texts:
+                messages.append({"role": "user", "content": text})
+
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                max_tokens=1000,
+                temperature=0.7
+            )
+            response_text = response.choices[0].message.content
+
+        flashcards = self.parse_flashcards(response_text)
+        print(f"Generated {len(flashcards)} flashcards in {time.time() - start_time:.2f} seconds.")
+        return flashcards
+    
 class FlashcardGeneratorMistral(BaseFlashcardGenerator):
     def __init__(self):
         self.client = Mistral(api_key=MISTRAL_API_KEY)
@@ -246,6 +301,22 @@ class FlashcardGeneratorGemini(BaseFlashcardGenerator):
         )
 
         response_text = getattr(response, "text", str(response))
+        flashcards = self.parse_flashcards(response_text)
+        print(f"Generated {len(flashcards)} flashcards in {time.time() - start_time:.2f} seconds.")
+        return flashcards
+    
+    def generate_flashcards_with_report(self, file_paths,prompt):
+        """Generates flashcards using Gemini AI."""
+        start_time = time.time()
+        documents = self.upload_files(file_paths)
+
+        response = self.client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[*documents, prompt],
+        )
+
+        response_text = getattr(response, "text", str(response))
+        print(response_text)
         flashcards = self.parse_flashcards(response_text)
         print(f"Generated {len(flashcards)} flashcards in {time.time() - start_time:.2f} seconds.")
         return flashcards

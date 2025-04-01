@@ -1,11 +1,8 @@
 from fastapi import FastAPI, UploadFile, File, Form, APIRouter
 from fastapi.responses import StreamingResponse
 import os
-import asyncio
 import logging
 import pdfplumber
-import pytesseract
-from PIL import Image
 from pptx import Presentation
 import pandas as pd
 from openai import AsyncOpenAI
@@ -23,7 +20,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 mistral_client = Mistral(api_key=MISTRAL_API_KEY)
-
+format_text = """---
+## **Continue processing the next chunk of text:**  
+{text}  """
 async def extract_text(pdf_path: str, start_page: int, end_page: int) -> str:
     """Extract text from PDF pages."""
     with pdfplumber.open(pdf_path) as pdf:
@@ -36,7 +35,7 @@ async def generate_notes_stream_chatgpt(cleaned_text: str, previous_summary: str
         yield ""
 
     try:
-        messages = [{"role": "user", "content": SUMMARY_PROMPT.format(text=cleaned_text)}]
+        messages = [{"role": "user", "content": SUMMARY_PROMPT+(format_text.format(text=cleaned_text))}]
 
         if previous_summary:
             messages.insert(0, {"role": "assistant", "content": previous_summary})
@@ -60,7 +59,7 @@ async def generate_notes_stream_chatgpt(cleaned_text: str, previous_summary: str
 async def generate_notes_stream_mistral(cleaned_text: str,previous_summary: str = ""):
     """Generate structured notes using Mistral AI with streaming."""
     try:
-        messages = [{"role": "user", "content": SUMMARY_PROMPT.format(text=cleaned_text)}]
+        messages = [{"role": "user", "content": SUMMARY_PROMPT+(format_text.format(text=cleaned_text))}]
 
         if previous_summary:
             messages.insert(0, {"role": "assistant", "content": previous_summary})
@@ -86,7 +85,7 @@ async def generate_gemini_notes_stream(cleaned_text: str, previous_summary: str 
         yield ""
 
     try:
-        messages = SUMMARY_PROMPT.format(text=cleaned_text)
+        messages = SUMMARY_PROMPT+(format_text.format(text=cleaned_text))
 
         if previous_summary:
             messages = previous_summary + "\n\n" + messages
@@ -168,8 +167,8 @@ async def stream_summary(file_paths: list[str], model: str):
                 with pdfplumber.open(file_path) as pdf:
                     total_pages = len(pdf.pages)
 
-                for start in range(0, total_pages, 10):
-                    cleaned_text = await process_chunk(file_path, start, min(start + 10, total_pages))
+                for start in range(0, total_pages, 5):
+                    cleaned_text = await process_chunk(file_path, start, min(start + 5, total_pages))
 
                     if cleaned_text:
                         if model == "chatgpt":
@@ -189,6 +188,10 @@ async def stream_summary(file_paths: list[str], model: str):
             except Exception as e:
                 logging.error(f"Streaming error: {e}")
                 yield f"Error: {str(e)}"
+            finally:
+                for file_path in file_paths:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
         else:
             try:
                 cleaned_text = extract_text_from_file(file_path)
@@ -209,3 +212,7 @@ async def stream_summary(file_paths: list[str], model: str):
             except Exception as e:
                 logging.error(f"Streaming error: {e}")
                 yield f"Error: {str(e)}"
+            finally:
+                for file_path in file_paths:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)

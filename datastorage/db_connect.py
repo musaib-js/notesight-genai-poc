@@ -1,13 +1,24 @@
 from pymongo import MongoClient
+from core.config import MONGODB_URI
 from bson import ObjectId
-from core.config import MONGO_URI
 
-client = MongoClient(MONGO_URI)
-db = client["school_database"]
-collection = db["students"]
+client = MongoClient(MONGODB_URI)
+db = client['notesight']
 
-def save_student_report(report):
-    """Saves the generated student report to MongoDB."""
-    result = collection.insert_one(report)
-    report["_id"] = str(result.inserted_id)
+users_collection = db['users']
+reports_collection = db['reports']
+
+def save_student_report(report, report_id=None):
+    if report_id:
+        reports_collection.update_one(
+            {"_id": ObjectId(report_id)},
+            {"$set": report}
+        )
+    else:
+        result = reports_collection.insert_one(report)
+        report['_id'] = str(result.inserted_id)
     return report
+
+
+def close_connection():
+    client.close()

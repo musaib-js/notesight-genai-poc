@@ -9,7 +9,7 @@ BASE_URL = "http://localhost:8000"
 st.set_page_config(layout="wide", page_title="POC for Notesight")
 
 st.sidebar.title("Features")
-page = st.sidebar.radio("Go to", ["Notes", "Flashcards", "Chat", "MCQ","report card"])
+page = st.sidebar.radio("Go to", ["Chat"])
 
 if "flashcards" not in st.session_state:
     st.session_state.flashcards = []
@@ -159,7 +159,7 @@ elif page == "Chat":
         answer = response.json().get("answer", "⚠ No response received.") if response.status_code == 200 else f"❌ Error: {response.json().get('detail', 'Failed to get a response.')}"
         
         with st.chat_message("assistant"):
-            st.markdown(answer)
+            st.markdown(answer,unsafe_allow_html=True)
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
 
@@ -232,7 +232,7 @@ elif page == "report card":
 
     st.title("Student Report Generator")
 
-    # Upload PDF
+    
     st.subheader("Upload Student Marks PDF")
     uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
     if uploaded_file and st.button("Generate Report"):
@@ -240,7 +240,7 @@ elif page == "report card":
             result = upload_pdf(uploaded_file)
             st.session_state["report"] = result.get("data", {})
 
-    # Display Report
+    
     if "report" in st.session_state:
         report = st.session_state["report"]
         st.subheader("Generated Report")

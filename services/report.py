@@ -6,7 +6,6 @@ from google.genai import types
 from core.config import GEMINI_API_KEY
 from core.prompts import REPORT_PROMPT
 
-# Initialize Google Gemini AI Client
 genai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 def extract_json(response_text):
@@ -22,19 +21,19 @@ def process_pdf(pdf_data):
     """Processes PDF, generates report via Gemini AI, and structures it."""
     pdf_part = types.Part.from_bytes(data=pdf_data, mime_type="application/pdf")
 
-    # Generate AI-based report
     response = genai_client.models.generate_content(
         model="gemini-2.0-flash",
         contents=[pdf_part, REPORT_PROMPT],
     )
     report = extract_json(response.text)
-
-    # Structure data for MongoDB
     student_data = {
         "student_info": report["student_info"],
         "subject_performance": report["subject_performance"],
         "strengths": report["strengths"],
+        "average": report.get("average", []),
         "weaknesses": report["weaknesses"],
         "overall_performance_summary": report["overall_performance_summary"],
     }
+    if not student_data:
+        return response.text
     return student_data

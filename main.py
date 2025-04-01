@@ -12,7 +12,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 @app.get("/home", status_code=status.HTTP_200_OK)
 def home():

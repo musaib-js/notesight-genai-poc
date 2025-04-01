@@ -73,6 +73,24 @@ class MCQGeneratorGemini:
         except Exception as e:
             print(f"❌ Error generating MCQs: {e}")
             return ""
+    
+    def generate_personalized_mcqs(self, prompt, file_paths):
+        """Generates MCQs for the selected topics using uploaded files."""
+
+        try:
+            pdf_parts = []
+            for file_path in file_paths:
+                with open(file_path, "rb") as file:
+                    pdf_parts.append(types.Part.from_bytes(data=file.read(), mime_type="application/pdf"))
+
+            response = self.client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=[pdf_parts,prompt]
+            )
+            return response.text
+        except Exception as e:
+            print(f"❌ Error generating MCQs: {e}")
+            return ""
 
 class MCQGeneratorChatGPT:
     def __init__(self):
@@ -196,7 +214,37 @@ class MCQGeneratorChatGPT:
         except Exception as e:
             print(f"❌ Error generating MCQs: {e}")
             return "❌ Error during MCQ generation."
+        
+    def generate_personalized_mcqs(self, prompt, file_paths):
+        """Generates MCQs for the selected topics using uploaded files."""
+        self.initialize_assistant_and_thread()
+        try:
+            attachments = [{"file_id": self.upload_file(path), "tools": [{"type": "file_search"}]} for path in file_paths]
 
+
+            self.openai_client.beta.threads.messages.create(
+                thread_id=self.thread_id,
+                role="user",
+                content=prompt,
+                attachments=attachments,
+            )
+
+            run = self.openai_client.beta.threads.runs.create(thread_id=self.thread_id, assistant_id=self.assistant_id)
+
+            while True:
+                status = self.openai_client.beta.threads.runs.retrieve(thread_id=self.thread_id, run_id=run.id)
+                if status.status in ["completed", "failed"]:
+                    break
+
+            messages = self.openai_client.beta.threads.messages.list(thread_id=self.thread_id)
+            mcqs_json = next((msg.content[0].text.value for msg in messages.data if msg.role == "assistant"), "")
+            print(mcqs_json.strip())
+            return mcqs_json.strip()
+
+        except Exception as e:
+            print(f"❌ Error generating MCQs: {e}")
+            return "❌ Error during MCQ generation."
+        
 
 class MCQGeneratorMistral:
     def __init__(self):
