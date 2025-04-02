@@ -36,7 +36,7 @@ en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_
 eval_type_backport==0.2.2
 exceptiongroup==1.2.2
 faiss-cpu==1.10.0
-faiss-gpu
+# faiss-gpu==1.7.2
 fastapi==0.115.8
 fastapi-cli==0.0.7
 filelock==3.18.0
